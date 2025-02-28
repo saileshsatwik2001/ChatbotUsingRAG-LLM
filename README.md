@@ -1,85 +1,127 @@
-# RAG using LangChain with Amazon Bedrock Titan text, and embedding, using OpenSearch vector engine
+# RAG Implementation with LangChain, Amazon Bedrock, and OpenSearch
 
-This sample repository provides a sample code for using RAG (Retrieval augmented generation) method relaying on [Amazon Bedrock](https://aws.amazon.com/bedrock/) [Titan Embeddings Generation 1 (G1)](https://aws.amazon.com/bedrock/titan/) LLM (Large Language Model), for creating text embedding that will be stored in [Amazon OpenSearch](https://aws.amazon.com/opensearch-service/) with [vector engine support](https://aws.amazon.com/about-aws/whats-new/2023/07/vector-engine-amazon-opensearch-serverless-preview/) for assisting with the prompt engineering task for more accurate response from LLMs.
+This repository provides a sample implementation of Retrieval-Augmented Generation (RAG) by leveraging Amazon Bedrock’s Titan Embeddings Generation 1 (G1) for text embedding. These embeddings are stored in Amazon OpenSearch with vector engine support, improving prompt engineering for more precise LLM responses.
 
-After we successfully loaded embeddings into OpenSearch, we will then start querying our LLM, by using [LangChain](https://www.langchain.com/). We will ask questions, retrieving similar embedding for a more accurate prompt.
+## Overview
 
-You can use `--bedrock-model-id` parameter, to seamlessly choose one of the available foundation model in Amazon Bedrock, that defaults to [Anthropic Claude v2](https://aws.amazon.com/bedrock/claude/) and can be replaced to any other model from any other model provider to choose your best performing foundation model.
+1. Generate text embeddings using Amazon Bedrock’s Titan model.
+2. Store the embeddings in Amazon OpenSearch with vector engine support.
+3. Use LangChain to retrieve relevant embeddings for refined prompt engineering.
+4. Query the LLM based on retrieved embeddings to generate contextual responses.
 
-Anthropic:
+## Model Selection
 
-- Claude v2 `python ./ask-bedrock-with-rag.py --ask "How will AI will change our every day life?"`
-- Claude v1.3 `python ./ask-bedrock-with-rag.py --bedrock-model-id anthropic.claude-v1 --ask "How will AI will change our every day life?"`
-- Claude Instance v1.2 `python ./ask-bedrock-with-rag.py --bedrock-model-id anthropic.claude-instant-v1 --ask "How will AI will change our every day life?"`
+The `--bedrock-model-id` parameter allows selection of a foundation model. By default, it is set to [Anthropic Claude v2](https://aws.amazon.com/bedrock/claude/), but other models can be specified.
 
-AI21 Labs:
+### Example Queries:
 
-- Jurassic-2 Ultra `python ./ask-bedrock-with-rag.py --bedrock-model-id ai21.j2-ultra-v1 --ask "How will AI will change our every day life?"`
-- Jurassic-2 Mid `python ./ask-bedrock-with-rag.py --bedrock-model-id ai21.j2-mid-v1 --ask "How will AI will change our every day life?"`
+#### Anthropic Models:
+
+- Claude v2:
+  ```bash
+  python ask-bedrock-with-rag.py --ask "How will AI impact daily life?"
+  ```
+- Claude v1.3:
+  ```bash
+  python ask-bedrock-with-rag.py --bedrock-model-id anthropic.claude-v1 --ask "How will AI impact daily life?"
+  ```
+- Claude Instant v1.2:
+  ```bash
+  python ask-bedrock-with-rag.py --bedrock-model-id anthropic.claude-instant-v1 --ask "How will AI impact daily life?"
+  ```
+
+#### AI21 Labs Models:
+
+- Jurassic-2 Ultra:
+  ```bash
+  python ask-bedrock-with-rag.py --bedrock-model-id ai21.j2-ultra-v1 --ask "How will AI impact daily life?"
+  ```
+- Jurassic-2 Mid:
+  ```bash
+  python ask-bedrock-with-rag.py --bedrock-model-id ai21.j2-mid-v1 --ask "How will AI impact daily life?"
+  ```
 
 ## Prerequisites
 
-1. This was tested on Python 3.11.4
-2. It is advise to work on a clean environment, use `virtualenv` or any other virtual environment manager.
+1. **Python Environment**
 
-    ```bash
-    pip install virtualenv
-    python -m virtualenv venv
-    source ./venv/bin/activate
-    ```
+   - Compatible with Python 3.11.4
+   - It is recommended to use a virtual environment:
+     ```bash
+     pip install virtualenv
+     python -m virtualenv venv
+     source ./venv/bin/activate
+     ```
 
-3. Install requirements `pip install -r requirements.txt`
-4. Install [terraform](https://developer.hashicorp.com/terraform/downloads?product_intent=terraform) to create the OpenSearch cluster
+2. **Install Required Packages**
 
-    ```bash
-    brew tap hashicorp/tap
-    brew install hashicorp/tap/terraform
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-5. Go to the Model Access [page](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) and enable the foundation models you want to use.
+3. **Install Terraform for OpenSearch Deployment**
 
-## Steps for using this sample code
+   ```bash
+   brew tap hashicorp/tap
+   brew install hashicorp/tap/terraform
+   ```
 
-1. In the first step we will launch an OpenSearch cluster using Terraform.
+4. **Enable Model Access**
 
-    ```bash
-    cd ./terraform
-    terraform init
-    terraform apply -auto-approve
-    ```
+   - Visit the [Model Access Page](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) to activate the desired foundation models.
 
-    >>This cluster configuration is for testing proposes only, as it's endpoint is public for simplifying the use of this sample code.
+## Usage Instructions
 
-2. Now that we have a running OpenSearch cluster with vector engine support we will start uploading our data that will help us with prompt engineering. For this sample, we will use a data source from [Hugging Face](https://huggingface.co) [embedding-training-data](https://huggingface.co/datasets/sentence-transformers/embedding-training-data) [gooaq_pairs](https://huggingface.co/datasets/sentence-transformers/embedding-training-data/resolve/main/gooaq_pairs.jsonl.gz), we will download it, and invoke Titan embedding to get a text embedding, that we will store in OpenSearch for next steps.
+### 1. Deploy OpenSearch Cluster
 
-    ```bash
-    python load-data-to-opensearch.py --recreate 1 --early-stop 1
-    ```
-
-    >>Optional arguments:
-    >>- `--recreate` for recreating the index in OpenSearch
-    >>- `--early-stop` to load only 100 embedded documents into OpenSearch
-    >>- `--index` to use a different index than the default **rag**
-    >>- `--region` in case you are not using the default **us-east-1**
-    >>- `--multi-tenant` to use multi tenancy, will load data with tenant IDs (1-5)
-    
-
-3. Now that we have embedded text, into our OpenSearch cluster, we can start querying our LLM model Titan text in Amazon Bedrock with RAG
-
-    ```bash
-    python ask-bedrock-with-rag.py --ask "your question here"
-    ```
-
-    >>Optional arguments:
-    >>- `--index` to use a different index than the default **rag**
-    >>- `--region` in case you are not using the default **us-east-1**
-    >>- `--bedrock-model-id` to choose different models than Anthropic's Claude v2
-    >>- `--tenant-id` to filter only a specific tenant ID
-
-
-### Cleanup
+Use Terraform to provision the OpenSearch cluster:
 
 ```bash
 cd ./terraform
-terraform destroy # When prompt for confirmation, type yes, and press enter.
+terraform init
+terraform apply -auto-approve
 ```
+
+**Note:** This setup is for testing purposes and uses a public endpoint.
+
+### 2. Load Embeddings into OpenSearch
+
+Retrieve and process the dataset from [Hugging Face](https://huggingface.co/datasets/sentence-transformers/embedding-training-data) using Titan embeddings.
+
+```bash
+python load-data-to-opensearch.py --recreate 1 --early-stop 1
+```
+
+**Optional Arguments:**
+
+- `--recreate`: Rebuilds the OpenSearch index.
+- `--early-stop`: Loads only 100 embedded documents.
+- `--index`: Specifies an index name (default: **rag**).
+- `--region`: Defines the AWS region (default: **us-east-1**).
+- `--multi-tenant`: Enables multi-tenancy (loads data with tenant IDs 1-5).
+
+### 3. Query LLM with RAG
+
+Once the embeddings are loaded, query the LLM:
+
+```bash
+python ask-bedrock-with-rag.py --ask "your question here"
+```
+
+**Optional Arguments:**
+
+- `--index`: Specifies an index name (default: **rag**).
+- `--region`: Defines the AWS region (default: **us-east-1**).
+- `--bedrock-model-id`: Selects a different foundation model.
+- `--tenant-id`: Filters results by tenant ID.
+
+### Cleanup
+
+To remove all deployed resources, execute:
+
+```bash
+cd ./terraform
+terraform destroy
+```
+
+Type "yes" when prompted to confirm resource deletion.
